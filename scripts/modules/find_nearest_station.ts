@@ -1,5 +1,7 @@
-import { Module, ModuleOutput, Status } from "./module"
-import { STATIONS } from "./stations";
+import * as builder from "botbuilder"
+
+import { STATIONS, Station } from "./stations";
+import { BotModule, IBotModuleContext, DialogTypes } from "./bot_module";
 
 export const CONFIG = {
     google: {
@@ -11,7 +13,7 @@ export const CONFIG = {
             }
         }
     },
-    debug: true,
+    debug: false,
     locationConstraint: "Metro Manila, Philippines"
 }
 export const GMAPS_CLIENT = require('@google/maps').createClient({
@@ -19,103 +21,90 @@ export const GMAPS_CLIENT = require('@google/maps').createClient({
     Promise: require("promise")
 })
 
-export type Input = {
-    place: string
+export type NearestStationEvaluation = {
+    debug_actualStationAddress?: string,
+    station: Station
+    distance: number,
+    distanceText: string
 }
-export type Output = ModuleOutput<{
+export type NearestStationOutput = {
     from: string,
-    distances: any[]
-}>
-
-export const MODULE: Module<Input, Output> = input => {
-    return new Promise<Output>((resolve, reject) => {
-
-        let place = input.place
-
-        if (!place) {
-            reject({
-                status: Status.BadInput,
-                message: "Bad Request, Parameter 'place' not found",
-                content: {
-                    from: "",
-                    distances: []
-                }
-            })
-            return;
+    distances: NearestStationEvaluation[]
+}
+export function findNearestStation(place: string): Promise<NearestStationOutput> {
+    return GMAPS_CLIENT.distanceMatrix({
+        origins: [place + " " + CONFIG.locationConstraint],
+        destinations: STATIONS.map(station => station.address),
+        mode: CONFIG.google.maps.distanceMatrix.mode,
+        units: CONFIG.google.maps.distanceMatrix.units
+    }).asPromise().then(gres => {
+        if (CONFIG.debug) {
+            console.log("GMaps Client DistanceMatrix Response:")
+            console.log(JSON.stringify(gres, null, 4))
         }
 
-        GMAPS_CLIENT.distanceMatrix({
-            origins: [place + " " + CONFIG.locationConstraint],
-            destinations: STATIONS.map(station => station.address),
-            mode: CONFIG.google.maps.distanceMatrix.mode,
-            units: CONFIG.google.maps.distanceMatrix.units
-        }).asPromise()
-            .then(gres => {
-                if (CONFIG.debug) {
-                    console.log("GMaps Client DistanceMatrix Response:")
-                    console.log(JSON.stringify(gres, null, 4))
+        let json = gres.json
+
+        let origin = json.origin_addresses[0] + ""
+        if (origin == "") {
+            throw new Error("Please be specific on the location");
+        }
+
+        let elements = json.rows[0].elements
+        if (elements[0].status == "NOT_FOUND") {
+            throw new Error("The location cannot be reached from any train stations")
+        }
+
+        let distances: NearestStationEvaluation = elements
+            .map((elem, index) => {
+                return {
+                    debug_actualStationAddress: CONFIG.debug ? json.destination_addresses[index] : undefined,
+                    station: STATIONS[index],
+                    distance: elem.distance.value,
+                    distanceText: elem.distance.text
                 }
-
-                let json = gres.json
-                let origin = json.origin_addresses[0] + ""
-
-                if (origin == "") {
-                    reject({
-                        status: Status.CannotResolve,
-                        message: "Location not specific enough",
-                        errorContent: {
-                            from: origin,
-                            distances: []
-                        }
-                    })
-                    return;
-                }
-
-                let elements = json.rows[0].elements
-                if (elements[0].status == "NOT_FOUND") {
-                    reject({
-                        status: Status.NotFound,
-                        message: "Path not found",
-                        errorContent: {
-                            from: origin,
-                            distances: []
-                        }
-                    })
-                    return;
-                }
-                let distances = elements
-                    .map((elem, index) => {
-                        return {
-                            debug_actualStationAddress: CONFIG.debug ? json.destination_addresses[index] : undefined,
-                            station: STATIONS[index],
-                            distance: elem.distance.value,
-                            distanceText: elem.distance.text
-                        }
-                    })
-                    .sort((a, b) => {
-                        return a.distance - b.distance
-                    })
-                resolve({
-                    status: Status.Ok,
-                    message: "Ok",
-                    content: {
-                        from: origin,
-                        distances: distances
-                    }
-                })
-
             })
-            .catch(err => {
-                if (CONFIG.debug) {
-                    console.log(JSON.stringify(err, null, 4))
-                }
-                reject({
-                    status: Status.InternalError,
-                    message: "Internal Server Error",
-                    errorContent: CONFIG.debug ? err : undefined
-                })
+            .sort((a, b) => {
+                return a.distance - b.distance
             })
+        return {
+            from: origin,
+            distances: distances
+        }
 
+    }).catch(err => {
+        if (CONFIG.debug) {
+            console.error(JSON.stringify(err, null, 4))
+        }
+        throw new Error("Oops! Something happened on our side\nPlease return later on.");
     })
 }
-export default MODULE
+
+export class FindNearestStationModule extends BotModule {
+
+    constructor() {
+        super("find_nearest_station", "Find Nearest Station",
+            "find nearest station", "nearest station", "nearest")
+    }
+
+    protected generateDialog(context: IBotModuleContext): DialogTypes {
+        return [
+            session => {
+                builder.Prompts.text(session, 'This function finds the nearest station to a given place. What place?')
+            },
+            (session, results) => {
+                findNearestStation(results.response)
+                    .then(out => {
+                        session.send(`The nearest LRT-1 station to the address ${out.from} is the ${out.distances[0].station.longName} \
+                        which is ${out.distances[0].distanceText} away`)
+                        session.endDialog()
+                    })
+                    .catch(err => {
+                        session.send(err.message)
+                        session.endDialog()
+                    })
+            }
+        ]
+    }
+}
+export const INSTANCE = new FindNearestStationModule();

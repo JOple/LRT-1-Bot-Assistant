@@ -1,6 +1,6 @@
-
 import * as builder from "botbuilder"
-import fns from "./find_nearest_station"
+import { BotModule, BotModuleRecognizer, bestMatchingModule } from "./bot_module";
+import defaultDialog = require("./default_dialog")
 
 /*----------------------------------------------------------------------------------------
 * Connector Initialization
@@ -11,18 +11,29 @@ export const CONNECTOR = new builder.ChatConnector({
     openIdMetadata: process.env.BotOpenIdMetadata
 });
 
-/*----------------------------------------------------------------------------------------
-* Bot Initialization
-* ---------------------------------------------------------------------------------------- */
-// var bot = new builder.UniversalBot(connector);
-export const BOT = new builder.UniversalBot(CONNECTOR, function (session) {
-    session.send("You said: %s", session.message.text);
-    fns({
-        place: session.message.text
-    }).then(o => {
-        session.send(JSON.stringify(o.content, null, 4))
+let modules: BotModule[] = [
+    require("./latest_lrt_update").INSTANCE,
+    require("./find_nearest_station").INSTANCE,
+    require("./approx_train_arrival").INSTANCE,
+    require("./basic_queries").FARECOST,
+    require("./basic_queries").POIS,
+    require("./basic_queries").OPEN_HOURS,
+    require("./basic_queries").STATION_LIST,
+    defaultDialog.INSTANCE
+
+]
+export const BOT = new builder.UniversalBot(CONNECTOR)
+export const RECOGNIZER = new BotModuleRecognizer(defaultDialog.CONFIG)
+
+BOT.recognizer(RECOGNIZER)
+
+for (let module of modules) {
+    console.log(JSON.stringify(module, null, 4))
+    module.init({
+        bot: BOT,
+        recognizer: RECOGNIZER
     })
-});
+}
 
 /*----------------------------------------------------------------------------------------
 * Database Initialization

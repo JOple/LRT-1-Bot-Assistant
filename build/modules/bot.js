@@ -6,12 +6,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const builder = __importStar(require("botbuilder"));
-const find_nearest_station_1 = __importDefault(require("./find_nearest_station"));
+const bot_module_1 = require("./bot_module");
+const defaultDialog = require("./default_dialog");
 /*----------------------------------------------------------------------------------------
 * Connector Initialization
 * ---------------------------------------------------------------------------------------- */
@@ -20,18 +18,26 @@ exports.CONNECTOR = new builder.ChatConnector({
     appPassword: process.env.MicrosoftAppPassword,
     openIdMetadata: process.env.BotOpenIdMetadata
 });
-/*----------------------------------------------------------------------------------------
-* Bot Initialization
-* ---------------------------------------------------------------------------------------- */
-// var bot = new builder.UniversalBot(connector);
-exports.BOT = new builder.UniversalBot(exports.CONNECTOR, function (session) {
-    session.send("You said: %s", session.message.text);
-    find_nearest_station_1.default({
-        place: session.message.text
-    }).then(o => {
-        session.send(JSON.stringify(o.content, null, 4));
+let modules = [
+    require("./latest_lrt_update").INSTANCE,
+    require("./find_nearest_station").INSTANCE,
+    require("./approx_train_arrival").INSTANCE,
+    require("./basic_queries").FARECOST,
+    require("./basic_queries").POIS,
+    require("./basic_queries").OPEN_HOURS,
+    require("./basic_queries").STATION_LIST,
+    defaultDialog.INSTANCE
+];
+exports.BOT = new builder.UniversalBot(exports.CONNECTOR);
+exports.RECOGNIZER = new bot_module_1.BotModuleRecognizer(defaultDialog.CONFIG);
+exports.BOT.recognizer(exports.RECOGNIZER);
+for (let module of modules) {
+    console.log(JSON.stringify(module, null, 4));
+    module.init({
+        bot: exports.BOT,
+        recognizer: exports.RECOGNIZER
     });
-});
+}
 /*----------------------------------------------------------------------------------------
 * Database Initialization
 * ---------------------------------------------------------------------------------------- */
