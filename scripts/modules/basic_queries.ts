@@ -84,6 +84,7 @@ export class FareCostModule extends BotModule {
 
                 session.send(`The fair from ${lookStation(fair.from).longName} to ${lookStation(fair.to).longName} is ${fair.costBeep} for Beep Card\
                     and ${fair.costReg} for Single-Journey Card`)
+                session.replaceDialog("none")
             }
         ]
     }
