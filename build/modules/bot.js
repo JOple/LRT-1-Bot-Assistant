@@ -26,6 +26,7 @@ let modules = [
     require("./basic_queries").POIS,
     require("./basic_queries").OPEN_HOURS,
     require("./basic_queries").STATION_LIST,
+    require("./customer_serive").INSTANCE,
     defaultDialog.INSTANCE
 ];
 exports.BOT = new builder.UniversalBot(exports.CONNECTOR);
@@ -43,9 +44,9 @@ for (let module of modules) {
 * ---------------------------------------------------------------------------------------- */
 // TODO: Enable this part when in the environment
 // var tableName = 'botdata';
-// var azureTableClient = new botbuilder_azure.AzureTableClient(tableName, process.env['AzureWebJobsStorage']);
-// var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
-// bot.set('storage', tableStorage);
+// var azureTableClient = new builder_azure.AzureTableClient(tableName, process.env['AzureWebJobsStorage']);
+// var tableStorage = new builder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
+// BOT.set('storage', tableStorage);
 /*----------------------------------------------------------------------------------------
 * Bot Methods
 * ---------------------------------------------------------------------------------------- */

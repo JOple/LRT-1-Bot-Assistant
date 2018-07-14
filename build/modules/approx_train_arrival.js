@@ -11,11 +11,14 @@ const builder = __importStar(require("botbuilder"));
 const stations_1 = require("./stations");
 const bot_module_1 = require("./bot_module");
 const send_cards_1 = require("../utils/send_cards");
+const ads_1 = require("./ads");
 exports.CONFIG = {
     minEta: 2,
     maxEta: 4,
     trainIsInBias: 0.5,
-    stationThreshold: 0.4
+    stationThreshold: 0.4,
+    adChance: 0.9,
+    adRadius: 1200
 };
 function approxTrainArrival(station) {
     return new Promise((resolve, reject) => {
@@ -41,8 +44,8 @@ class ApproxTrainArrivalModule extends bot_module_1.BotModule {
     generateDialog(context) {
         return [
             session => {
-                builder.Prompts.text(session, 'This function estimates the arrival of the next train to a station.\nWhat station?');
-                send_cards_1.sendCards(session, undefined, stations_1.STATION_ORDER_LONG);
+                builder.Prompts.text(session, 'This function estimates the arrival of the next train to a station. What station?');
+                send_cards_1.sendCards(session, "Station", stations_1.STATION_ORDER_LONG);
             },
             (session, results) => {
                 let station = stations_1.findStation(results.response, exports.CONFIG.stationThreshold)[0];
@@ -54,11 +57,14 @@ class ApproxTrainArrivalModule extends bot_module_1.BotModule {
                     .then(out => {
                     session.send(`The train will arrive on ${stations_1.lookStation(station).longName}, ${out.etaNorthText} on Northbound,\
                             and ${out.etaSouthText} on Southbound`);
-                    session.endDialog();
+                    ads_1.provideAds(session, stations_1.lookStation(station).address, exports.CONFIG.adRadius, exports.CONFIG.adChance);
+                    // session.endDialog()
+                    session.replaceDialog("none");
                 })
                     .catch(err => {
                     session.send(err.message);
-                    session.endDialog();
+                    // session.endDialog()
+                    session.replaceDialog("none");
                 });
             }
         ];

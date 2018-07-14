@@ -1,4 +1,5 @@
 import * as builder from "botbuilder"
+import * as builder_azure from "botbuilder-azure"
 import { BotModule, BotModuleRecognizer, bestMatchingModule } from "./bot_module";
 import defaultDialog = require("./default_dialog")
 
@@ -19,6 +20,7 @@ let modules: BotModule[] = [
     require("./basic_queries").POIS,
     require("./basic_queries").OPEN_HOURS,
     require("./basic_queries").STATION_LIST,
+    require("./customer_serive").INSTANCE,
     defaultDialog.INSTANCE
 
 ]
@@ -41,10 +43,10 @@ for (let module of modules) {
 // TODO: Enable this part when in the environment
 
 // var tableName = 'botdata';
-// var azureTableClient = new botbuilder_azure.AzureTableClient(tableName, process.env['AzureWebJobsStorage']);
-// var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
+// var azureTableClient = new builder_azure.AzureTableClient(tableName, process.env['AzureWebJobsStorage']);
+// var tableStorage = new builder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
 
-// bot.set('storage', tableStorage);
+// BOT.set('storage', tableStorage);
 
 /*----------------------------------------------------------------------------------------
 * Bot Methods

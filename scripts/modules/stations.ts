@@ -151,6 +151,7 @@ export const STATIONS: Station[] = [
     {
         shortName: StationName.balintawak,
         longName: "Balintawak Station",
+        altNames: ["balintawak"],
         address: "1179 Epifanio de los Santos Avenue, Brgy. Apolonio Samson, Balintawak, Quezon City 1106"
     },
     {

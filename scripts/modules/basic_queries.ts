@@ -3,9 +3,12 @@ import * as builder from "botbuilder"
 import { StationName, lookStation, fairCost, landmarks, LANDMARKS, findStation, STATIONS, STATION_ORDER_SHORT, STATION_ORDER_LONG } from "./stations";
 import { BotModule, DialogTypes, IBotModuleContext } from "./bot_module";
 import { sendCards } from "../utils/send_cards";
+import { provideAds } from "./ads";
 
 export const CONFIG = {
-    stationThreshold: 0.4
+    stationThreshold: 0.4,
+    adChance: 0.7,
+    adRadius: 1200
 }
 
 export type TicketCost = {
@@ -52,26 +55,30 @@ export class FareCostModule extends BotModule {
         }
         return [
             session => {
-                builder.Prompts.text(session, 'This function computes the fare cost for an LRT-1 travel.\
-                    From what station will you originate from?')
-                sendCards(session, undefined, STATION_ORDER_LONG)
+                builder.Prompts.text(session, 'This function computes the fare cost for an LRT-1 travel. From what station will you originate from?')
+                sendCards(session, "Origin Station", STATION_ORDER_LONG)
             },
             (session, results) => {
                 output.from = findStation(results.response, CONFIG.stationThreshold)[0]
                 if (!output.from) {
-                    session.endDialog("I cannot deduce the station where you came from. Please try again!")
+                    session.send("I cannot deduce the station where you came from. Please try again!")
+                    session.replaceDialog("none")
                     return;
                 }
 
                 builder.Prompts.text(session, 'To what station will you disembark?')
-                sendCards(session, undefined, STATION_ORDER_LONG)
+                sendCards(session, "Destination Station", STATION_ORDER_LONG)
             },
             (session, results) => {
                 output.to = findStation(results.response, CONFIG.stationThreshold)[0]
                 if (!output.to) {
-                    session.endDialog("I cannot deduce the station where you will disembark. Please try again!")
+                    session.send("I cannot deduce the station where you will disembark. Please try again!")
+                    session.replaceDialog("none")
                     return;
                 }
+
+                provideAds(session, lookStation(output.from).address, CONFIG.adRadius, CONFIG.adChance)
+                provideAds(session, lookStation(output.to).address, CONFIG.adRadius, CONFIG.adChance)
 
                 let fair = computeTicketCost(output.from, output.to)
 
@@ -93,20 +100,23 @@ export class LandmarksModule extends BotModule {
     protected generateDialog(context: IBotModuleContext): DialogTypes {
         return [
             session => {
-                builder.Prompts.text(session, 'This functions tells the different landmarks and famous places near a specific station.\n \
-                    What station?')
-                sendCards(session, undefined, STATION_ORDER_LONG)
+                builder.Prompts.text(session, 'This functions tells the different landmarks and famous places near a specific station. What station?')
+                sendCards(session, "Station", STATION_ORDER_LONG)
             },
             (session, results) => {
                 let station = findStation(results.response, CONFIG.stationThreshold)[0]
                 if (!station) {
-                    session.endDialog("I cannot deduce the station where you want to know more about famous places. Please try again!")
+                    session.send("I cannot deduce the station where you want to know more about famous places. Please try again!")
+                    session.replaceDialog("none")
                     return;
                 }
 
                 let pois = landmarks(station)
-                session.send(`From ${lookStation(station).longName} you could visit the places:\n ${pois.join("\n")}`)
-                session.endDialog()
+                session.send(`From ${lookStation(station).longName} you could visit the places: ${pois.join(", ")}`)
+
+                provideAds(session, lookStation(station).address, CONFIG.adRadius, CONFIG.adChance)
+
+                session.replaceDialog("none")
             }
         ]
     }
@@ -124,7 +134,7 @@ export class OperatingHoursModule extends BotModule {
         return session => {
             let oh = operatingHours();
             session.send(`LRT-1 is open from ${oh.from} to ${oh.to}`)
-            session.endDialog()
+            session.replaceDialog("none")
         }
     }
 }
@@ -139,8 +149,8 @@ export class StationListModule extends BotModule {
 
     protected generateDialog(context: IBotModuleContext): DialogTypes {
         return session => {
-            session.send(`LRT-1 stations (South to North):\n${STATIONS.map(s => s.longName).join("\n")}`)
-            session.endDialog()
+            session.send(`LRT-1 stations (South to North): ${STATIONS.map(s => s.longName).join(", ")}`)
+            session.replaceDialog("none")
         }
     }
 }

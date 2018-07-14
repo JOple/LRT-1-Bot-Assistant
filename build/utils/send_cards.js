@@ -8,23 +8,37 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const builder = __importStar(require("botbuilder"));
-function sendCards(session, text, cards) {
+function sendCards(session, title, cards) {
     let msg = new builder.Message(session);
-    if (text) {
-        msg = msg.text(text);
-    }
-    if (cards) {
-        msg = msg.suggestedActions(builder.SuggestedActions.create(session, [
-            ...cards.map(kv => {
-                let key = kv + "", value = kv + "";
-                if (kv instanceof Array) {
-                    key = kv[0];
-                    value = kv[1];
-                }
-                return builder.CardAction.imBack(session, value, key);
-            })
-        ]));
-    }
+    let card = new builder.HeroCard()
+        .title(title)
+        .buttons(cards.map(kv => {
+        let key = kv + "", value = kv + "";
+        if (kv instanceof Array) {
+            key = kv[0];
+            value = kv[1];
+        }
+        return builder.CardAction.imBack(session, value, key);
+    }));
+    msg.addAttachment(card);
+    // if (text) {
+    //     msg = msg.text(text)
+    // }
+    // if (cards) {
+    //     msg = msg.suggestedActions(
+    //         builder.SuggestedActions.create(
+    //             session, [
+    //                 ...cards.map(kv => {
+    //                     let key = kv + "", value = kv + ""
+    //                     if (kv instanceof Array) {
+    //                         key = kv[0]
+    //                         value = kv[1]
+    //                     }
+    //                     return builder.CardAction.imBack(session, value, key)
+    //                 })
+    //             ]
+    //         ))
+    // }
     session.send(msg);
 }
 exports.sendCards = sendCards;

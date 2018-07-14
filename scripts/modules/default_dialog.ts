@@ -17,8 +17,8 @@ export class DefaultDialogModule extends BotModule {
                 .filter(m => m != this)
                 .map(m => m.fullName)
 
-            session.send("These are the things that I can do: " + actions.join())
-            sendCards(session, null, actions)
+            session.send("These are the things that I can do: " + actions.join(", "))
+            sendCards(session, "Choose Action", actions)
             session.endDialog()
         }
     }

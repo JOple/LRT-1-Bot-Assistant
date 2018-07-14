@@ -2,6 +2,7 @@ import * as builder from "botbuilder"
 
 import { STATIONS, Station } from "./stations";
 import { BotModule, IBotModuleContext, DialogTypes } from "./bot_module";
+import { provideAds } from "./ads";
 
 export const CONFIG = {
     google: {
@@ -13,8 +14,10 @@ export const CONFIG = {
             }
         }
     },
-    debug: false,
-    locationConstraint: "Metro Manila, Philippines"
+    debug: true,
+    locationConstraint: "Metro Manila, Philippines",
+    adChance: 0.9,
+    adRadius: 1200
 }
 export const GMAPS_CLIENT = require('@google/maps').createClient({
     key: CONFIG.google.maps.apiKey,
@@ -67,6 +70,7 @@ export function findNearestStation(place: string): Promise<NearestStationOutput>
             .sort((a, b) => {
                 return a.distance - b.distance
             })
+
         return {
             from: origin,
             distances: distances
@@ -97,11 +101,14 @@ export class FindNearestStationModule extends BotModule {
                     .then(out => {
                         session.send(`The nearest LRT-1 station to the address ${out.from} is the ${out.distances[0].station.longName} \
                         which is ${out.distances[0].distanceText} away`)
-                        session.endDialog()
+
+                        provideAds(session, out.from, CONFIG.adRadius, CONFIG.adChance)
+
+                        session.replaceDialog("none")
                     })
                     .catch(err => {
                         session.send(err.message)
-                        session.endDialog()
+                        session.replaceDialog("none")
                     })
             }
         ]

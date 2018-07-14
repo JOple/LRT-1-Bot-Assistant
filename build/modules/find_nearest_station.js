@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const builder = __importStar(require("botbuilder"));
 const stations_1 = require("./stations");
 const bot_module_1 = require("./bot_module");
+const ads_1 = require("./ads");
 exports.CONFIG = {
     google: {
         maps: {
@@ -20,8 +21,10 @@ exports.CONFIG = {
             }
         }
     },
-    debug: false,
-    locationConstraint: "Metro Manila, Philippines"
+    debug: true,
+    locationConstraint: "Metro Manila, Philippines",
+    adChance: 0.9,
+    adRadius: 1200
 };
 exports.GMAPS_CLIENT = require('@google/maps').createClient({
     key: exports.CONFIG.google.maps.apiKey,
@@ -85,11 +88,12 @@ class FindNearestStationModule extends bot_module_1.BotModule {
                     .then(out => {
                     session.send(`The nearest LRT-1 station to the address ${out.from} is the ${out.distances[0].station.longName} \
                         which is ${out.distances[0].distanceText} away`);
-                    session.endDialog();
+                    ads_1.provideAds(session, out.from, exports.CONFIG.adRadius, exports.CONFIG.adChance);
+                    session.replaceDialog("none");
                 })
                     .catch(err => {
                     session.send(err.message);
-                    session.endDialog();
+                    session.replaceDialog("none");
                 });
             }
         ];

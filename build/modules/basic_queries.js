@@ -11,8 +11,11 @@ const builder = __importStar(require("botbuilder"));
 const stations_1 = require("./stations");
 const bot_module_1 = require("./bot_module");
 const send_cards_1 = require("../utils/send_cards");
+const ads_1 = require("./ads");
 exports.CONFIG = {
-    stationThreshold: 0.4
+    stationThreshold: 0.4,
+    adChance: 0.7,
+    adRadius: 1200
 };
 function computeTicketCost(from, to) {
     return {
@@ -45,25 +48,28 @@ class FareCostModule extends bot_module_1.BotModule {
         };
         return [
             session => {
-                builder.Prompts.text(session, 'This function computes the fare cost for an LRT-1 travel.\
-                    From what station will you originate from?');
-                send_cards_1.sendCards(session, undefined, stations_1.STATION_ORDER_LONG);
+                builder.Prompts.text(session, 'This function computes the fare cost for an LRT-1 travel. From what station will you originate from?');
+                send_cards_1.sendCards(session, "Origin Station", stations_1.STATION_ORDER_LONG);
             },
             (session, results) => {
                 output.from = stations_1.findStation(results.response, exports.CONFIG.stationThreshold)[0];
                 if (!output.from) {
-                    session.endDialog("I cannot deduce the station where you came from. Please try again!");
+                    session.send("I cannot deduce the station where you came from. Please try again!");
+                    session.replaceDialog("none");
                     return;
                 }
                 builder.Prompts.text(session, 'To what station will you disembark?');
-                send_cards_1.sendCards(session, undefined, stations_1.STATION_ORDER_LONG);
+                send_cards_1.sendCards(session, "Destination Station", stations_1.STATION_ORDER_LONG);
             },
             (session, results) => {
                 output.to = stations_1.findStation(results.response, exports.CONFIG.stationThreshold)[0];
                 if (!output.to) {
-                    session.endDialog("I cannot deduce the station where you will disembark. Please try again!");
+                    session.send("I cannot deduce the station where you will disembark. Please try again!");
+                    session.replaceDialog("none");
                     return;
                 }
+                ads_1.provideAds(session, stations_1.lookStation(output.from).address, exports.CONFIG.adRadius, exports.CONFIG.adChance);
+                ads_1.provideAds(session, stations_1.lookStation(output.to).address, exports.CONFIG.adRadius, exports.CONFIG.adChance);
                 let fair = computeTicketCost(output.from, output.to);
                 session.send(`The fair from ${stations_1.lookStation(fair.from).longName} to ${stations_1.lookStation(fair.to).longName} is ${fair.costBeep} for Beep Card\
                     and ${fair.costReg} for Single-Journey Card`);
@@ -80,19 +86,20 @@ class LandmarksModule extends bot_module_1.BotModule {
     generateDialog(context) {
         return [
             session => {
-                builder.Prompts.text(session, 'This functions tells the different landmarks and famous places near a specific station.\n \
-                    What station?');
-                send_cards_1.sendCards(session, undefined, stations_1.STATION_ORDER_LONG);
+                builder.Prompts.text(session, 'This functions tells the different landmarks and famous places near a specific station. What station?');
+                send_cards_1.sendCards(session, "Station", stations_1.STATION_ORDER_LONG);
             },
             (session, results) => {
                 let station = stations_1.findStation(results.response, exports.CONFIG.stationThreshold)[0];
                 if (!station) {
-                    session.endDialog("I cannot deduce the station where you want to know more about famous places. Please try again!");
+                    session.send("I cannot deduce the station where you want to know more about famous places. Please try again!");
+                    session.replaceDialog("none");
                     return;
                 }
                 let pois = stations_1.landmarks(station);
-                session.send(`From ${stations_1.lookStation(station).longName} you could visit the places:\n ${pois.join("\n")}`);
-                session.endDialog();
+                session.send(`From ${stations_1.lookStation(station).longName} you could visit the places: ${pois.join(", ")}`);
+                ads_1.provideAds(session, stations_1.lookStation(station).address, exports.CONFIG.adRadius, exports.CONFIG.adChance);
+                session.replaceDialog("none");
             }
         ];
     }
@@ -107,7 +114,7 @@ class OperatingHoursModule extends bot_module_1.BotModule {
         return session => {
             let oh = operatingHours();
             session.send(`LRT-1 is open from ${oh.from} to ${oh.to}`);
-            session.endDialog();
+            session.replaceDialog("none");
         };
     }
 }
@@ -119,8 +126,8 @@ class StationListModule extends bot_module_1.BotModule {
     }
     generateDialog(context) {
         return session => {
-            session.send(`LRT-1 stations (South to North):\n${stations_1.STATIONS.map(s => s.longName).join("\n")}`);
-            session.endDialog();
+            session.send(`LRT-1 stations (South to North): ${stations_1.STATIONS.map(s => s.longName).join(", ")}`);
+            session.replaceDialog("none");
         };
     }
 }

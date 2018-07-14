@@ -3,12 +3,15 @@ import * as builder from "botbuilder"
 import { StationTrainState, StationName, findNorth, findSouth, findStation, lookStation, STATION_ORDER_LONG } from "./stations";
 import { BotModule, IBotModuleContext, DialogTypes } from "./bot_module";
 import { sendCards } from "../utils/send_cards";
+import { provideAds } from "./ads";
 
 export const CONFIG = {
     minEta: 2,
     maxEta: 4,
     trainIsInBias: 0.5,
-    stationThreshold: 0.4
+    stationThreshold: 0.4,
+    adChance: 0.9,
+    adRadius: 1200
 }
 export type TrainArrivalOutput = {
     stationNorth: StationName,
@@ -48,8 +51,8 @@ export class ApproxTrainArrivalModule extends BotModule {
     protected generateDialog(context: IBotModuleContext): DialogTypes {
         return [
             session => {
-                builder.Prompts.text(session, 'This function estimates the arrival of the next train to a station.\nWhat station?')
-                sendCards(session, undefined, STATION_ORDER_LONG)
+                builder.Prompts.text(session, 'This function estimates the arrival of the next train to a station. What station?')
+                sendCards(session, "Station", STATION_ORDER_LONG)
             },
             (session, results) => {
                 let station = findStation(results.response, CONFIG.stationThreshold)[0]
@@ -62,11 +65,14 @@ export class ApproxTrainArrivalModule extends BotModule {
                     .then(out => {
                         session.send(`The train will arrive on ${lookStation(station).longName}, ${out.etaNorthText} on Northbound,\
                             and ${out.etaSouthText} on Southbound`)
-                        session.endDialog()
+                        provideAds(session, lookStation(station).address, CONFIG.adRadius, CONFIG.adChance)
+                        // session.endDialog()
+                        session.replaceDialog("none")
                     })
                     .catch(err => {
                         session.send(err.message)
-                        session.endDialog()
+                        // session.endDialog()
+                        session.replaceDialog("none")
                     })
             }
         ]

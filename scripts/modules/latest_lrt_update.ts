@@ -43,7 +43,7 @@ export class LatestLrtUpdateModule extends BotModule {
                     session.send("At " + date.format(createdAt, 'ddd MMM DD YYYY hh:mm A'))
                     session.send(text)
                 }
-                session.endDialog()
+                session.replaceDialog("none")
             })
         }
     }
