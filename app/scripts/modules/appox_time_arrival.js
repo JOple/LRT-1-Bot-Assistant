@@ -1,10 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.config = {
-    pathVariable: "station"
-};
+exports.config = {};
 let handler = (req, res) => {
-    let station = req.query[exports.config.pathVariable];
 };
 let module = {
     method: "get",

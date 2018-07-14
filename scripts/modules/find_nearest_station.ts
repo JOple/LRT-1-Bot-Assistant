@@ -1,116 +1,93 @@
-import { Module } from "./module"
-import restify from "restify"
+import { Module, ModuleOutput, Status } from "./module"
+import { STATIONS } from "./stations";
 
-export const config = {
-    pathVariable: "place",
+export const CONFIG = {
     google: {
         maps: {
-            apiKey: "AIzaSyBpERBr8CsN1Cs_atrlpiIUIrC9CV1tnd4"
+            apiKey: "AIzaSyBpERBr8CsN1Cs_atrlpiIUIrC9CV1tnd4",
+            distanceMatrix: {
+                mode: "walking",
+                units: "metric"
+            }
         }
-    },
-    response: {
-        status: "status",
-        message: "message",
-        data: "data"
     },
     debug: true,
     locationConstraint: "Metro Manila, Philippines"
 }
-
-export type Station = {
-    shortName: string,
-    longName: string,
-    address: string
-}
-export const stations: Station[] = [
-    {
-        shortName: "edsa",
-        longName: "EDSA Station",
-        address: "Taft Ave, Pasay, 1300 Metro Manila"
-    },
-    {
-        shortName: "libertad",
-        longName: "Libertad Station",
-        address: "Antonio S. Arnaiz Ave, Pasay, Metro Manila"
-    },
-    {
-        shortName: "gil_puyat",
-        longName: "Gil Puyat Station",
-        address: "2741 Taft Ave Pasay City, Pasay, Metro Manila"
-    },
-    {
-        shortName: "vito_cruz",
-        longName: "Vito Cruz Station",
-        address: "Malate, Manila, 1004 Metro Manila"
-    }
-    // {
-    //     shortName: "quirino",
-    //     longName: "Quirino Station",
-    //     address: ""
-    // },
-    // {
-    //     shortName: "pedro_gil",
-    //     longName: "Pedro Gil Station",
-    //     address: ""
-    // }
-]
-
-export const gmaps = require('@google/maps').createClient({
-    key: config.google.maps.apiKey,
+export const GMAPS_CLIENT = require('@google/maps').createClient({
+    key: CONFIG.google.maps.apiKey,
     Promise: require("promise")
 })
 
-function sendJson(res: restify.Response, code: number, message: string, data?: any) {
-    let json: any = {}
-    json[config.response.status] = code
-    json[config.response.message] = message
-    json[config.response.data] = data
-
-    res.status(code)
-    res.json(json)
+export type Input = {
+    place: string
 }
+export type Output = ModuleOutput<{
+    from: string,
+    distances: any[]
+}>
 
-let handler = (req: restify.Request, res: restify.Response) => {
+export const MODULE: Module<Input, Output> = input => {
+    return new Promise<Output>((resolve, reject) => {
 
-    let place = req.query[config.pathVariable]
-    console.log(JSON.stringify(req.query, null, 4))
+        let place = input.place
 
-    if (place) {
+        if (!place) {
+            reject({
+                status: Status.BadInput,
+                message: "Bad Request, Parameter 'place' not found",
+                content: {
+                    from: "",
+                    distances: []
+                }
+            })
+            return;
+        }
 
-        gmaps.distanceMatrix({
-            origins: [place + " " + config.locationConstraint],
-            destinations: stations.map(station => station.address),
-            mode: "walking",
-            units: "metric"
-        })
-            .asPromise()
+        GMAPS_CLIENT.distanceMatrix({
+            origins: [place + " " + CONFIG.locationConstraint],
+            destinations: STATIONS.map(station => station.address),
+            mode: CONFIG.google.maps.distanceMatrix.mode,
+            units: CONFIG.google.maps.distanceMatrix.units
+        }).asPromise()
             .then(gres => {
-                console.log(JSON.stringify(gres, null, 4))
-                let json = gres.json
+                if (CONFIG.debug) {
+                    console.log("GMaps Client DistanceMatrix Response:")
+                    console.log(JSON.stringify(gres, null, 4))
+                }
 
-                let origin = json.origin_addresses[0]
+                let json = gres.json
+                let origin = json.origin_addresses[0] + ""
 
                 if (origin == "") {
-                    sendJson(res, 409, "Location not specific enough", {
-                        from: origin,
-                        distances: []
+                    reject({
+                        status: Status.CannotResolve,
+                        message: "Location not specific enough",
+                        errorContent: {
+                            from: origin,
+                            distances: []
+                        }
                     })
                     return;
                 }
 
                 let elements = json.rows[0].elements
                 if (elements[0].status == "NOT_FOUND") {
-                    sendJson(res, 404, "Path not found", {
-                        from: origin,
-                        distances: []
+                    reject({
+                        status: Status.NotFound,
+                        message: "Path not found",
+                        errorContent: {
+                            from: origin,
+                            distances: []
+                        }
                     })
                     return;
                 }
                 let distances = elements
                     .map((elem, index) => {
                         return {
-                            debug_actualStationAddress: config.debug ? json.destination_addresses[index] : undefined,
-                            station: stations[index],
+                            debug_actualStationAddress: CONFIG.debug ? json.destination_addresses[index] : undefined,
+                            station: STATIONS[index],
                             distance: elem.distance.value,
                             distanceText: elem.distance.text
                         }
@@ -118,23 +95,27 @@ let handler = (req: restify.Request, res: restify.Response) => {
                     .sort((a, b) => {
                         return a.distance - b.distance
                     })
-                sendJson(res, 200, "Ok", {
-                    from: origin,
-                    distances: distances
+                resolve({
+                    status: Status.Ok,
+                    message: "Ok",
+                    content: {
+                        from: origin,
+                        distances: distances
+                    }
                 })
+
             })
             .catch(err => {
-                console.log(JSON.stringify(err, null, 4))
-                sendJson(res, 500, "Internal Server Error", config.debug ? err : undefined)
+                if (CONFIG.debug) {
+                    console.log(JSON.stringify(err, null, 4))
+                }
+                reject({
+                    status: Status.InternalError,
+                    message: "Internal Server Error",
+                    errorContent: CONFIG.debug ? err : undefined
+                })
             })
-    } else {
-        sendJson(res, 400, "Bad Request, Parameter '" + config.pathVariable + "' not found")
-    }
-}
 
-const mod: Module = {
-    method: "get",
-    path: "/nearest_station",
-    handler: handler
+    })
 }
-export default mod
+export default MODULE

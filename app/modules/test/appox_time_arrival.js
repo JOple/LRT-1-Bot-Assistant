@@ -5,6 +5,8 @@ exports.config = {
 };
 let handler = (req, res) => {
     let station = req.query[exports.config.pathVariable];
+    if (!station) {
+    }
 };
 let module = {
     method: "get",
