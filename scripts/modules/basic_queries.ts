@@ -150,7 +150,7 @@ export class StationListModule extends BotModule {
 
     protected generateDialog(context: IBotModuleContext): DialogTypes {
         return session => {
-            session.send(`LRT-1 stations (South to North): ${STATIONS.map(s => s.longName).join(", ")}`)
+            session.send(`LRT-1 stations (South to North):<br/> ${STATIONS.map(s => s.longName).join(", <br/>")}`)
             session.replaceDialog("none")
         }
     }

@@ -71,7 +71,7 @@ function provideAds(session, place, meterRadius, chance) {
         if (validAddresses.length && Math.random() < chance) {
             let randIndex = Math.floor(Math.random() * validAddresses.length);
             let address = validAddresses[randIndex];
-            session.send(exports.DATA[address]);
+            session.send("SPONSORED<br>" + exports.DATA[address]);
         }
     }).catch(err => {
         if (exports.CONFIG.debug) {

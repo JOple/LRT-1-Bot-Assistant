@@ -8,7 +8,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const builder = __importStar(require("botbuilder"));
-function sendCards(session, title, cards) {
+function sendCards(session, title, cards, delay) {
+    delay = delay || 1500;
     let msg = new builder.Message(session);
     let card = new builder.HeroCard()
         .title(title)
@@ -39,6 +40,6 @@ function sendCards(session, title, cards) {
     //             ]
     //         ))
     // }
-    session.send(msg);
+    setTimeout(() => session.send(msg), delay);
 }
 exports.sendCards = sendCards;

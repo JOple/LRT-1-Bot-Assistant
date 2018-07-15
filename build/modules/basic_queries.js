@@ -73,6 +73,7 @@ class FareCostModule extends bot_module_1.BotModule {
                 let fair = computeTicketCost(output.from, output.to);
                 session.send(`The fair from ${stations_1.lookStation(fair.from).longName} to ${stations_1.lookStation(fair.to).longName} is ${fair.costBeep} for Beep Card\
                     and ${fair.costReg} for Single-Journey Card`);
+                session.replaceDialog("none");
             }
         ];
     }
@@ -126,7 +127,7 @@ class StationListModule extends bot_module_1.BotModule {
     }
     generateDialog(context) {
         return session => {
-            session.send(`LRT-1 stations (South to North): ${stations_1.STATIONS.map(s => s.longName).join(", ")}`);
+            session.send(`LRT-1 stations (South to North):<br/> ${stations_1.STATIONS.map(s => s.longName).join(", <br/>")}`);
             session.replaceDialog("none");
         };
     }

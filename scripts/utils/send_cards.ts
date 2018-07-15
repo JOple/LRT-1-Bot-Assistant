@@ -1,7 +1,8 @@
 import * as builder from "botbuilder"
 
 export type KeyValue = [string, string]
-export function sendCards(session: builder.Session, title: string, cards: (KeyValue | string)[]) {
+export function sendCards(session: builder.Session, title: string, cards: (KeyValue | string)[], delay?: number) {
+    delay = delay || 1500
     let msg = new builder.Message(session);
 
     let card = new builder.HeroCard()
@@ -33,5 +34,6 @@ export function sendCards(session: builder.Session, title: string, cards: (KeyVa
     //             ]
     //         ))
     // }
-    session.send(msg)
+    setTimeout(() => session.send(msg), delay)
+
 }

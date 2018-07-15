@@ -15,7 +15,7 @@ class DefaultDialogModule extends bot_module_1.BotModule {
             let actions = context.recognizer.modules
                 .filter(m => m != this)
                 .map(m => m.fullName);
-            session.send("These are the things that I can do: " + actions.join(", "));
+            session.send("These are the things that I can do: <br/>" + actions.join(",<br/>"));
             send_cards_1.sendCards(session, "Choose Action", actions);
             session.endDialog();
         };
